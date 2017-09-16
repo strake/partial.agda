@@ -2,6 +2,7 @@ open import Agda.Primitive
 
 module Function.Partial {ℓ : Level} where
 
+open import Algebra.FunctionProperties.Core
 open import Data.Bool
 open import Data.Empty
 open import Data.Maybe as Maybe
@@ -40,12 +41,12 @@ _∘_ : {A B C : Set ℓ} → (B ⇀ C) → (A ⇀ B) → (A ⇀ C)
 _∘_ = _<=<_ where open import Category.Monad
                   open RawMonad Maybe.monad
 
-join : {A B : Set ℓ} → (B → B → B) → (A ⇀ B) → (A ⇀ B) → (A ⇀ B)
+join : {A B : Set ℓ} → Op₂ B → Op₂ (A ⇀ B)
 join _*_ f g a = just _*_ ⊛ f a ⊛ g a
   where open import Category.Monad
         open RawMonad Maybe.monad
 
-_<|_ : {A B : Set ℓ} → (A ⇀ B) → (A ⇀ B) → (A ⇀ B)
+_<|_ : {A B : Set ℓ} → Op₂ (A ⇀ B)
 _<|_ = join const
 
 private _⊑M_ : {B : Set ℓ} → Rel (Maybe B) ℓ
