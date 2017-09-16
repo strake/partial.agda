@@ -13,52 +13,56 @@ open import Level using (Lift; lift)
 open import Relation.Binary
 open import Relation.Binary.PropositionalEquality as PropEq
 
-infixr 1 _⇀_
-_⇀_ : Set ℓ → Set ℓ → Set ℓ
-A ⇀ B = A → Maybe B
+infixr 1 _⇀_ _⇀'_
+_⇀_ : (A : Set ℓ) → (B : A → Set ℓ) → Set ℓ
+A ⇀ B = (a : A) → Maybe (B a)
+
+_⇀'_ : Set ℓ → Set ℓ → Set ℓ
+A ⇀' B = A ⇀ const B
 
 infix 0 _≈_
-_≈_ : {A B : Set ℓ} → Rel (A ⇀ B) ℓ
-f ≈ g = (a : _) → f a ≡ g a
+_≈_ : ∀ {A B} → Rel (A ⇀ B) ℓ
+f ≈ g = ∀ a → f a ≡ g a
 
-≈-isEquivalence : {A B : Set ℓ} → IsEquivalence (_≈_ {A} {B})
+≈-isEquivalence : ∀ {A B} → IsEquivalence (_≈_ {A} {B})
 ≈-isEquivalence = record
     { refl = λ _ → refl;
       sym = F._∘_ PropEq.sym;
       trans = λ f≈g g≈h x → f≈g x ⟨ PropEq.trans ⟩ g≈h x }
 
-dom : {A B : Set ℓ} → (A ⇀ B) → A → Bool
+dom : ∀ {A B} → (A ⇀ B) → A → Bool
 dom = F._∘_ (maybe (const true) false)
 
-id : {A : Set ℓ} → (A ⇀ A)
+id : ∀ {A} → (A ⇀ const A)
 id = just
 
-∅ : {A B : Set ℓ} → (A ⇀ B)
-∅ = const nothing
+∅ : ∀ {A B} → (A ⇀ B)
+∅ _ = nothing
 
 infixr 9 _∘_
-_∘_ : {A B C : Set ℓ} → (B ⇀ C) → (A ⇀ B) → (A ⇀ C)
-_∘_ = _<=<_ where open import Category.Monad
-                  open RawMonad Maybe.monad
+_∘_ : ∀ {A B C} → (∀ {a} → B a ⇀' C a) → (A ⇀ B) → (A ⇀ C)
+(f ∘ g) a = g a >>= f
+  where open import Category.Monad
+        open RawMonad Maybe.monad
 
-join : {A B : Set ℓ} → Op₂ B → Op₂ (A ⇀ B)
+join : ∀ {A B} → (∀ {a} → Op₂ (B a)) → Op₂ (A ⇀ B)
 join _*_ f g a = just _*_ ⊛ f a ⊛ g a
   where open import Category.Monad
         open RawMonad Maybe.monad
 
-_<|_ : {A B : Set ℓ} → Op₂ (A ⇀ B)
+_<|_ : ∀ {A B} → Op₂ (A ⇀ B)
 _<|_ = join const
 
-private _⊑M_ : {B : Set ℓ} → Rel (Maybe B) ℓ
+private _⊑M_ : ∀ {B} → Rel (Maybe B) ℓ
 just a  ⊑M just b  = a ≡ b
 just _  ⊑M nothing = Lift ⊥
 nothing ⊑M _       = Lift ⊤
 
 infix 4 _⊑_
-_⊑_ : {A B : Set ℓ} → Rel (A ⇀ B) ℓ
+_⊑_ : ∀ {A B} → Rel (A ⇀ B) ℓ
 f ⊑ g = (a : _) → f a ⊑M g a
 
-⊑-isPartialOrder : {A B : Set ℓ} → IsPartialOrder {A = A ⇀ B} (_≈_ {A} {B}) (_⊑_ {A} {B})
+⊑-isPartialOrder : ∀ {A B} → IsPartialOrder {A = A ⇀ B} (_≈_ {A} {B}) (_⊑_ {A} {B})
 ⊑-isPartialOrder {A} {B} = record
     { isPreorder = record
           { isEquivalence = ≈-isEquivalence;
@@ -74,7 +78,7 @@ f ⊑ g = (a : _) → f a ⊑M g a
                                          (just _) nothing  _        → λ { (lift ()) _ };
                                          nothing  _        _        → λ _ _ → lift tt }
                           ⊑-trans : (f g h : A ⇀ B) → f ⊑ g → g ⊑ h → f ⊑ h
-                          ⊑-trans f g h f⊑g g⊑h = const ⊑M-trans ˢ f ˢ g ˢ h ˢ f⊑g ˢ g⊑h
+                          ⊑-trans f g h f⊑g g⊑h a = f⊑g a ⟨ ⊑M-trans (f a) (g a) (h a) ⟩ g⊑h a
                       in ⊑-trans f g h };
       antisym = let ⊑M-antisym : {A : Set ℓ} (x y : Maybe A) → x ⊑M y → y ⊑M x → x ≡ y
                     ⊑M-antisym = λ { (just _) (just _) refl _ → refl;
